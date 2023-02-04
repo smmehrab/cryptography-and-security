@@ -52,12 +52,14 @@ class BruteForceAttacker():
         # output
         if status:
             plainttext = key_checker.decrypt(key)
+            print("--------------------------------------------")
             print("[Successful Attack]")
             if DEBUG:
                 print("--------------------------------------------")
                 print("Plaintext:")
                 print(plainttext)
         else:
+            print("--------------------------------------------")
             print("[Unsuccessful Attack]")
 
         return status, plainttext
