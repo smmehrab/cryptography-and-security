@@ -23,7 +23,7 @@ class BruteForceAttacker():
             print(f"Block Size:     {self._BLOCK_SIZE}")
             print(f"Key Range :     {self._key_range}")
 
-    def attack(self, ciphertext, passphrase):
+    def attack(self, ciphertext, passphrase, hint):
 
         if DEBUG:
             print("--------------------------------------------")
@@ -32,13 +32,16 @@ class BruteForceAttacker():
             print("--------------------------------------------")
             print("Passphrase:")
             print(passphrase)
+            print("--------------------------------------------")
+            print("Hint:")
+            print(hint)
 
         status = False
         key = None
         plainttext = ""
 
         # brute-force
-        key_checker = KeyChecker(ciphertext, passphrase)
+        key_checker = KeyChecker(ciphertext, passphrase, hint)
         for candidate_key in self._key_range:
             valid = key_checker.check(candidate_key)
             if valid:
@@ -64,17 +67,26 @@ if __name__ == '__main__':
 
     # input
     if len(sys.argv) != 4:
-        print("EXACTLY 3 ARGUMENTS NEEDED IN ORDER: ciphertext_file_path passphrase_file_path output_file_path")
+        print("EXACTLY 3 ARGUMENTS NEEDED IN ORDER: ciphertext_file_path cipher_info_file_path output_file_path")
         sys.exit()
-    with open(sys.argv[1], 'r') as file:
-        ciphertext = file.read()
-    with open(sys.argv[2], 'r') as file:
-        passphrase = file.read()
+    else:
+        ciphertext_file_path = sys.argv[1]
+        cipher_info_file_path = sys.argv[2]
+        output_file_path = sys.argv[3]
 
-    # attack
-    attacker = BruteForceAttacker(16)
-    status, plaintext = attacker.attack(ciphertext, passphrase)
+    # file reads
+    with open(ciphertext_file_path, 'r') as file:
+        ciphertext = file.read()
+    with open(cipher_info_file_path, 'r') as file:
+        cipher_info_lines = file.readlines()
+        blocksize = int(cipher_info_lines[0].split(":")[1])
+        passphrase = cipher_info_lines[1].split(":")[1][:-1]
+        hint = cipher_info_lines[2].split(":")[1]
+
+    ### ATTACK ###
+    attacker = BruteForceAttacker(blocksize)
+    status, plaintext = attacker.attack(ciphertext, passphrase, hint)
 
     # output
-    with open(sys.argv[3], 'w') as file:
+    with open(output_file_path, 'w') as file:
         file.write(plaintext)
