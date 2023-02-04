@@ -41,7 +41,7 @@ class BruteForceAttacker():
         plainttext = ""
 
         # brute-force
-        key_checker = KeyChecker(ciphertext, passphrase, hint)
+        key_checker = KeyChecker(ciphertext, passphrase, hint, self._BLOCK_SIZE)
         for candidate_key in self._key_range:
             valid = key_checker.check(candidate_key)
             if valid:
