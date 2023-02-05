@@ -193,7 +193,7 @@ class BruteForceAttacker():
         status, key, plaintext = self._naive_brute_force(key_checker)
         self._show_attack_report(status, key, plaintext)
 
-        return status, plaintext
+        return status, key, plaintext
 
 
 if __name__ == '__main__':
@@ -218,8 +218,16 @@ if __name__ == '__main__':
 
     ### ATTACK ###
     attacker = BruteForceAttacker(blocksize)
-    status, plaintext = attacker.attack(ciphertext, passphrase, hint)
+    status, key, plaintext = attacker.attack(ciphertext, passphrase, hint)
 
     # output
     with open(output_file_path, 'w') as file:
-        file.write(plaintext)
+        status = "Successful" if status else "Unsuccessful"
+        output = "--------------------------------------------\n"
+        output += "Status   : " + status +"\n"
+        output += "--------------------------------------------\n"
+        output += "Key      : " + key +"\n"
+        output += "--------------------------------------------\n"
+        output += "Plaintext:\n" + plaintext
+        output += "\n--------------------------------------------\n"
+        file.write(output)
