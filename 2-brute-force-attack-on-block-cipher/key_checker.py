@@ -69,11 +69,12 @@ class KeyChecker():
 
         # bitvector to plaintext
         plaintext = plaintext_bv.get_text_from_bitvector()
+        key = key_bv.get_bitvector_in_ascii()
         if DEBUG:
             print(plaintext)
-        return plaintext
+        return key, plaintext
 
     def check(self, key):
-        plaintext = self.decrypt(key)
+        key, plaintext = self.decrypt(key)
         validity = (plaintext.find(self._hint) != -1)
         return validity

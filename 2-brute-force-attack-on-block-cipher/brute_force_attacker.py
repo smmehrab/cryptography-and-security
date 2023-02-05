@@ -121,7 +121,7 @@ class BruteForceAttacker():
         print("")
 
         if status:
-            plaintext = key_checker.decrypt(key)
+            key, plaintext = key_checker.decrypt(key)
         return status, key, plaintext
 
     # ascii characters only (128)
@@ -150,7 +150,7 @@ class BruteForceAttacker():
         print("")
 
         if status:
-            plaintext = key_checker.decrypt(key)
+            key, plaintext = key_checker.decrypt(key)
         return status, key, plaintext
 
     # naive (2^16)
@@ -172,7 +172,7 @@ class BruteForceAttacker():
         print("")
 
         if status:
-            plaintext = key_checker.decrypt(key)
+            key, plaintext = key_checker.decrypt(key)
         return status, key, plaintext
 
     def attack(self, ciphertext, passphrase, hint):
