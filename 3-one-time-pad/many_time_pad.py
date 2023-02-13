@@ -225,7 +225,7 @@ class ManyTimePad():
             print("Brute Force Using Batches")
             print("------------------")
 
-        # key_bytes = [87, 75, 116, 51, 85, 113, 72, 105, 76, 83, 113, 75, 84, 49, 71, 101, 71, 88, 108, 78, 113, 102, 113, 87, 84, 65, 51, 55, 99, 56, 103, 69, 116, 105, 110, 109, 96, 113, 79, 106, 122, 68, 66, 98, 77, 72, 112, 72, 55, 53, 104, 54, 99, 71]
+        # key_bytes = [87, 75, 116, 51, 85, 113, 72, 105, 76, 83, 113, 75, 84, 49, 71, 101, 71, 88, 108, 78, 113, 102, 113, 87, 84, 65, 51, 55, 99, 56, 103, 69, 116, 105, 110, 109, 96, 113, 79, 106, 122, 68, 66, 98, 77, 72, 112, 72, 55, 53, 104, 54, 99, 71, 87, 97, 68, 98, 112, 49]
         # print(len(key_bytes))
         # with open(OUTPUT_FILE_PATH, 'w') as fhead:
         #     for ciphertext_bytes in list_of_ciphertext_bytes:
@@ -233,11 +233,12 @@ class ManyTimePad():
         #         fhead.write(plaintext + "\n")
         # return
 
+        key_bytes = []
+
         # solve using batches
         batch_size = 9
         number_of_batches = (number_of_positions//batch_size)
 
-        key_bytes = []
         for batch_index in range(number_of_batches):
             start_time = time.time()
 
@@ -259,7 +260,30 @@ class ManyTimePad():
                 print(f"Batch Plaintexts:\n{batch_plaintexts}")
                 print("------------------")
 
-        print(key_bytes)
+        start_time = time.time()
+
+        start_index = (number_of_batches*batch_size)
+        last_batch_size = number_of_positions - start_index
+        limit = number_of_positions
+
+        batch_key_bytes , batch_plaintexts, batch_scores  = self._batch_brute_force(start_index, [], list_of_ciphertext_bytes, list_of_candidate_key_bytes, limit, last_batch_size)
+        
+        for key_byte in batch_key_bytes:
+            key_bytes.append(key_byte)
+
+        end_time = time.time()
+        execution_time = round(float(end_time - start_time), 4)
+
+        if DEBUG:
+            print(f"Batch           :   {number_of_batches}")
+            print(f"Batch Time      :   {execution_time}s")
+            print(f"Batch Scores    :   {batch_scores}")
+            print(f"Batch Key Bytes :   {batch_key_bytes}")
+            print(f"Batch Plaintexts:\n{batch_plaintexts}")
+            print("------------------")
+            print("[Key Found]")
+            print(key_bytes)
+            print("------------------")
 
 if __name__ == '__main__':
 
