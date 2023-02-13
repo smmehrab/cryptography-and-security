@@ -68,6 +68,22 @@ class ManyTimePad():
     def _PRF(self, text_byte, key_byte, previous_cipher_byte):
         return text_byte ^ ((key_byte+previous_cipher_byte)%256)
 
+    def _get_key_bytes(self, ciphertext_bytes, plaintext, previous_cipher_byte=0):
+
+        if len(ciphertext_bytes) != len(plaintext):
+            raise Exception("[GET KEY] plaintext length must be equal to the ciphertext bytes count")
+
+        n = len(plaintext)
+        key_bytes = []
+        for i in range(n):
+            ciphertext_byte = ciphertext_bytes[i]
+            plaintext_byte = ord(plaintext[i])
+            key_byte = ((ciphertext_byte ^ plaintext_byte) - previous_cipher_byte) % 256
+            key_bytes.append(key_byte)
+            previous_cipher_byte = ciphertext_byte
+
+        return key_bytes
+
     def encrypt(self, plaintext_file_path=PLAINTEXT_FILE_PATH, key_file_path=KEY_FILE_PATH, output_file_path=CIPHERTEXT_FILE_PATH):
         plaintext = self._read_plaintext(plaintext_file_path)
         key = self._read_key(key_file_path)
@@ -127,6 +143,8 @@ class ManyTimePad():
         return plaintext
 
     def attack(self, ciphertexts_file_path=LIST_OF_CIPHERTEXTS_FILE_PATH):
+        list_of_ciphertext_bytes = self._read_ciphertext_bytes(ciphertexts_file_path, True)
+
         pass
 
 if __name__ == '__main__':
