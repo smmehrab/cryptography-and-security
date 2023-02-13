@@ -30,12 +30,20 @@ class ManyTimePad():
             data = file.read().rstrip()
         return re.sub(REGEX_PLAINTEXT, '',  data)
 
-    def _read_ciphertext_bytes(self, path):
+    def _read_ciphertext_bytes(self, path, reading_list=False):
         with open(path, 'r') as file:
-            content = file.read()
-        content = re.sub(REGEX_CIPHERTEXT_BYTES, '',  content)
-        ciphertext_bytes = content.split(",")
-        return ciphertext_bytes
+            lines = file.readlines()
+        list_of_ciphertext_bytes = []
+        for line in lines:
+            strnums = re.sub(REGEX_CIPHERTEXT_BYTES, '',  line)
+            strnums = strnums.split(",")
+            ciphertext_bytes = []
+            for strnum in strnums:
+                ciphertext_bytes.append(int(strnum))
+            list_of_ciphertext_bytes.append(ciphertext_bytes)
+        if reading_list:
+            return list_of_ciphertext_bytes
+        return list_of_ciphertext_bytes[0]
 
     def _read_key(self, path):
         with open(path, 'r') as file:
@@ -90,6 +98,7 @@ class ManyTimePad():
 
     def decrypt(self, ciphertext_file_path=CIPHERTEXT_FILE_PATH, key_file_path=KEY_FILE_PATH, output_file_path=PLAINTEXT_FILE_PATH):
         ciphertext_bytes = self._read_ciphertext_bytes(ciphertext_file_path)
+        print(ciphertext_bytes)
         key = self._read_key(key_file_path)
 
         if len(key) != len(ciphertext_bytes):
@@ -99,7 +108,7 @@ class ManyTimePad():
         plaintext = ""
         previous_cipher_byte = 0
         for i in range(n):
-            ciphertext_byte = int(ciphertext_bytes[i])
+            ciphertext_byte = ciphertext_bytes[i]
             key_byte = ord(key[i])
             plaintext_byte = self._PRF(ciphertext_byte, key_byte, previous_cipher_byte)
             plaintext += chr(plaintext_byte)
