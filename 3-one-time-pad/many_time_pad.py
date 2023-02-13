@@ -7,7 +7,7 @@
 # reg       :   2017614964
 # ************************************************
 
-import re
+import re, time
 
 DEBUG = True
 REGEX_PLAINTEXT = '[^A-Za-z\s,.?!-().]'
@@ -84,7 +84,7 @@ class ManyTimePad():
         return text_byte ^ ((key_byte+previous_cipher_byte)%256)
 
     def _get_key_byte(self, ciphertext_byte, plaintext_byte, previous_cipher_byte=0):
-            return ((ciphertext_byte ^ plaintext_byte) - previous_cipher_byte) % 256
+        return ((ciphertext_byte ^ plaintext_byte) - previous_cipher_byte) % 256
 
     def _encrypt(self, plaintext, key, previous_cipher_byte=0):
         if len(key) != len(plaintext):
@@ -114,12 +114,11 @@ class ManyTimePad():
             previous_cipher_byte = ciphertext_byte
         return plaintext
 
-    def _generate_all_possible_candidate_key_bytes(self, list_of_ciphertext_bytes):
-        ciphertext_length = len(list_of_ciphertext_bytes[0])
+    def _generate_all_possible_candidate_key_bytes(self, list_of_ciphertext_bytes, number_of_positions):
         list_of_candidate_key_bytes = []
 
         # for each position
-        for position in range(ciphertext_length):
+        for position in range(number_of_positions):
             candidate_key_bytes = []
             # try each member of the alphabet as plaintext_byte
             for alphabet_byte in self._alphabet_bytes:
@@ -147,22 +146,23 @@ class ManyTimePad():
                 score += (len(word)**2)
         return score
 
-    def _batch_brute_force(self, index, key_bytes, list_of_ciphertext_bytes, list_of_candidate_key_bytes, batch_size):
+    def _batch_brute_force(self, index, key_bytes, list_of_ciphertext_bytes, list_of_candidate_key_bytes, limit, batch_size):
         # base case
-        if index == batch_size :
+        if index == limit:
             plaintexts = ""
             for ciphertext_bytes in list_of_ciphertext_bytes:
-                batch_size_ciphertext_bytes = ciphertext_bytes[:batch_size]
+                batch_size_ciphertext_bytes = ciphertext_bytes[(index-batch_size):limit]
                 plaintext = self._decrypt(batch_size_ciphertext_bytes, key_bytes)
                 plaintexts += plaintext
                 plaintexts += "\n"
+            plaintexts = plaintexts[:-1]
             plaintexts_lower = plaintexts.lower()
             score = self._get_score(plaintexts_lower)
             return key_bytes, plaintexts, score
         # recurse
         best_key_bytes, best_plaintexts, best_score = None, None, 0
         for candidate_key_byte in list_of_candidate_key_bytes[index]:
-            updated_key_bytes, plaintexts, score = self._batch_brute_force(index+1, key_bytes+[candidate_key_byte], list_of_ciphertext_bytes, list_of_candidate_key_bytes, batch_size)
+            updated_key_bytes, plaintexts, score = self._batch_brute_force(index+1, key_bytes+[candidate_key_byte], list_of_ciphertext_bytes, list_of_candidate_key_bytes, limit, batch_size)
             if score > best_score:
                 best_key_bytes, best_plaintexts, best_score = updated_key_bytes, plaintexts, score
         return best_key_bytes, best_plaintexts, best_score
@@ -207,24 +207,59 @@ class ManyTimePad():
     def attack(self, ciphertexts_file_path=LIST_OF_CIPHERTEXTS_FILE_PATH):
 
         list_of_ciphertext_bytes = self._read_ciphertext_bytes(ciphertexts_file_path, True)
-        list_of_candidate_key_bytes = self._generate_all_possible_candidate_key_bytes(list_of_ciphertext_bytes)
+
+        number_of_positions = len(list_of_ciphertext_bytes[0])
+        list_of_candidate_key_bytes = self._generate_all_possible_candidate_key_bytes(list_of_ciphertext_bytes, number_of_positions)
 
         if DEBUG:
-            ciphertext_length = len(list_of_ciphertext_bytes[0])
             print("[ATTACK]")
             print("------------------")
-            print(f"Number of Candidate Key Bytes for {ciphertext_length} Positions:")
-            for position in range(ciphertext_length):
+            print("Generated All Possible Candidate Keys")
+            print("------------------")
+            print(f"Number of Candidate Key Bytes for {number_of_positions} Positions:")
+            for position in range(number_of_positions):
                 # print(list_of_candidate_key_bytes[position])
                 print(len(list_of_candidate_key_bytes[position]), end=" ")
             print("")
             print("------------------")
+            print("Brute Force Using Batches")
+            print("------------------")
 
+        # key_bytes = [87, 75, 116, 51, 85, 113, 72, 105, 76, 83, 113, 75, 84, 49, 71, 101, 71, 88, 108, 78, 113, 102, 113, 87, 84, 65, 51, 55, 99, 56, 103, 69, 116, 105, 110, 109, 96, 113, 79, 106, 122, 68, 66, 98, 77, 72, 112, 72, 55, 53, 104, 54, 99, 71]
+        # print(len(key_bytes))
+        # with open(OUTPUT_FILE_PATH, 'w') as fhead:
+        #     for ciphertext_bytes in list_of_ciphertext_bytes:
+        #         plaintext = self._decrypt(ciphertext_bytes, key_bytes)
+        #         fhead.write(plaintext + "\n")
+        # return
+
+        # solve using batches
         batch_size = 9
-        key_bytes , plaintexts, scores  = self._batch_brute_force(0, [], list_of_ciphertext_bytes, list_of_candidate_key_bytes, batch_size)
+        number_of_batches = (number_of_positions//batch_size)
+
+        key_bytes = []
+        for batch_index in range(number_of_batches):
+            start_time = time.time()
+
+            start_index = (batch_index*batch_size)
+            limit = (batch_index+1)*batch_size
+            batch_key_bytes , batch_plaintexts, batch_scores  = self._batch_brute_force(start_index, [], list_of_ciphertext_bytes, list_of_candidate_key_bytes, limit, batch_size)
+
+            for key_byte in batch_key_bytes:
+                key_bytes.append(key_byte)
+
+            end_time = time.time()
+            execution_time = round(float(end_time - start_time), 4)
+
+            if DEBUG:
+                print(f"Batch           :   {batch_index}")
+                print(f"Batch Time      :   {execution_time}s")
+                print(f"Batch Scores    :   {batch_scores}")
+                print(f"Batch Key Bytes :   {batch_key_bytes}")
+                print(f"Batch Plaintexts:\n{batch_plaintexts}")
+                print("------------------")
 
         print(key_bytes)
-        print(plaintexts)
 
 if __name__ == '__main__':
 
