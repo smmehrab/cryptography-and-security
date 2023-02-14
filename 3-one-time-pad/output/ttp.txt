@@ -1,0 +1,5 @@
+Iterations      :       7058
+Plaintext 1     :       security
+Plaintext 2     :       networks
+Key Bytes 1     :       [154, 95, 138, 176, 142, 26, 33, 172]
+Key Bytes 2     :       [135, 95, 157, 178, 147, 1, 62, 166]
