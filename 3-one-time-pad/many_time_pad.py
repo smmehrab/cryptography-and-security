@@ -10,10 +10,12 @@
 import re, time
 
 DEBUG = True
+HLINE = "___________________________________________\n"
+
 REGEX_PLAINTEXT = '[^A-Za-z\s,.?!-().]'
 REGEX_CIPHERTEXT_BYTES = '[^0-9,]'
-
 REGEX_STRIP = '\s+'
+
 DICTIONARY_FILE_PATH = "/usr/share/dict/words"
 PLAINTEXT_FILE_PATH = "./data/mtp/plaintext.txt"
 KEY_FILE_PATH = "./data/mtp/key.txt"
@@ -175,13 +177,14 @@ class ManyTimePad():
         ciphertext_bytes = self._encrypt(plaintext, key)
 
         if DEBUG:
+            print(HLINE)
             print("[ENCRYPTION]")
-            print("------------------")
+            print(HLINE)
             print("Plaintext        : " + plaintext)
             print("Key              : " + key)
             print("Ciphertext Bytes : ", end = "")
             print(ciphertext_bytes)
-            print("------------------")
+            print(HLINE)
 
         self._write_ciphertext_bytes(ciphertext_bytes, CIPHERTEXT_FILE_PATH)
         return ciphertext_bytes
@@ -194,12 +197,12 @@ class ManyTimePad():
 
         if DEBUG:
             print("[DECRYPTION]")
-            print("------------------")
+            print(HLINE)
             print("Ciphertext Bytes : ", end = "")
             print(ciphertext_bytes)
             print("Key              : " + key)
             print("Plaintext        : " + plaintext)
-            print("------------------")
+            print(HLINE)
 
         self._write_plaintext(plaintext, self._output_file_path)
         return plaintext
@@ -211,36 +214,66 @@ class ManyTimePad():
         number_of_positions = len(list_of_ciphertext_bytes[0])
         list_of_candidate_key_bytes = self._generate_all_possible_candidate_key_bytes(list_of_ciphertext_bytes, number_of_positions)
 
+        candidate_key_byte_counts = [0]*number_of_positions
+        for position in range(number_of_positions):
+            candidate_key_byte_counts[position] = len(list_of_candidate_key_bytes[position])
+
         if DEBUG:
             print("[ATTACK]")
-            print("------------------")
+            print(HLINE)
             print("Generated All Possible Candidate Keys")
-            print("------------------")
+            print(HLINE)
             print(f"Number of Candidate Key Bytes for {number_of_positions} Positions:")
             for position in range(number_of_positions):
                 # print(list_of_candidate_key_bytes[position])
-                print(len(list_of_candidate_key_bytes[position]), end=" ")
+                print(candidate_key_byte_counts[position], end=" ")
             print("")
-            print("------------------")
-            print("Brute Force Using Batches")
-            print("------------------")
+            print(HLINE)
+            print("Batch Brute Force")
+            print(HLINE)
 
-        # key_bytes = [87, 75, 116, 51, 85, 113, 72, 105, 76, 83, 113, 75, 84, 49, 71, 101, 71, 88, 108, 78, 113, 102, 113, 87, 84, 65, 51, 55, 99, 56, 103, 69, 116, 105, 110, 109, 96, 113, 79, 106, 122, 68, 66, 98, 77, 72, 112, 72, 55, 53, 104, 54, 99, 71, 87, 97, 68, 98, 112, 49]
-        # print(len(key_bytes))
-        # with open(OUTPUT_FILE_PATH, 'w') as fhead:
-        #     for ciphertext_bytes in list_of_ciphertext_bytes:
-        #         plaintext = self._decrypt(ciphertext_bytes, key_bytes)
-        #         fhead.write(plaintext + "\n")
-        # return
 
-        key_bytes = []
+        # Batch Size vs Combinations
+        print(HLINE)
+        print('{:15s} {:12s} '.format("Batch Size","Combinations"))
+        print(HLINE)
+        max_batch_size = (number_of_positions)//3
+        combinations = 1
+        for position in range(number_of_positions):
+            combinations *= candidate_key_byte_counts[position]
+            if position == 0:
+                continue
+            elif position <= max_batch_size:
+                print('{:10d} {:17d} '.format(position+1, combinations))
+            else:
+                break
+        print(HLINE)
+
+        # Batch Size Input
+        try:
+            batch_size = int(input("Enter Batch Size:\n"))
+        except ValueError:
+            raise ValueError('Batch Size must be integer')
+
+        if batch_size > number_of_positions:
+            Overflow = ValueError('Batch Size must be less than number of positions (' + str(number_of_positions) + ")")
+            raise Overflow
+        elif batch_size < 1:
+            Underflow = ValueError('Batch Size must be greater than 1')
+            raise Underflow
+        print(HLINE)
+
+        print("Batch Brute Force Started ... ")
+        print(HLINE)
 
         # solve using batches
-        batch_size = 9
+        key_bytes = []
+
+        total_time = 0
         number_of_batches = (number_of_positions//batch_size)
 
         for batch_index in range(number_of_batches):
-            start_time = time.time()
+            batch_start_time = time.time()
 
             start_index = (batch_index*batch_size)
             limit = (batch_index+1)*batch_size
@@ -249,18 +282,19 @@ class ManyTimePad():
             for key_byte in batch_key_bytes:
                 key_bytes.append(key_byte)
 
-            end_time = time.time()
-            execution_time = round(float(end_time - start_time), 4)
+            batch_end_time = time.time()
+            batch_execution_time = round(float(batch_end_time - batch_start_time), 4)
+            total_time += batch_execution_time
 
             if DEBUG:
                 print(f"Batch           :   {batch_index}")
-                print(f"Batch Time      :   {execution_time}s")
+                print(f"Batch Time      :   {batch_execution_time}s")
                 print(f"Batch Scores    :   {batch_scores}")
                 print(f"Batch Key Bytes :   {batch_key_bytes}")
                 print(f"Batch Plaintexts:\n{batch_plaintexts}")
-                print("------------------")
+                print(HLINE)
 
-        start_time = time.time()
+        batch_start_time = time.time()
 
         start_index = (number_of_batches*batch_size)
         last_batch_size = number_of_positions - start_index
@@ -271,19 +305,38 @@ class ManyTimePad():
         for key_byte in batch_key_bytes:
             key_bytes.append(key_byte)
 
-        end_time = time.time()
-        execution_time = round(float(end_time - start_time), 4)
+        batch_end_time = time.time()
+        batch_execution_time = round(float(batch_end_time - batch_start_time), 4)
+        total_time += batch_execution_time
 
         if DEBUG:
             print(f"Batch           :   {number_of_batches}")
-            print(f"Batch Time      :   {execution_time}s")
+            print(f"Batch Time      :   {batch_execution_time}s")
             print(f"Batch Scores    :   {batch_scores}")
             print(f"Batch Key Bytes :   {batch_key_bytes}")
             print(f"Batch Plaintexts:\n{batch_plaintexts}")
-            print("------------------")
-            print("[Key Found]")
-            print(key_bytes)
-            print("------------------")
+            print(HLINE)
+
+        # Get All Plaintexts
+        list_of_plaintexts = []
+        for i, ciphertext_bytes in enumerate(list_of_ciphertext_bytes):
+            plaintext = self._decrypt(ciphertext_bytes, key_bytes)
+            list_of_plaintexts.append(plaintext)
+
+        # Output
+        print("[Key Solved]")
+        print(HLINE)
+        print(key_bytes)
+        print(HLINE)
+        with open(OUTPUT_FILE_PATH, 'w') as fhead:
+            for i, plaintext in enumerate(list_of_plaintexts):
+                print(f"Plaintext {i}   :   {plaintext}")
+                fhead.write(plaintext + "\n")
+        print(HLINE)
+        print(f"Total Time      :   {total_time}s")
+        print(HLINE)
+
+        return list_of_plaintexts
 
 if __name__ == '__main__':
 
@@ -291,5 +344,7 @@ if __name__ == '__main__':
 
     many_time_pad.encrypt(PLAINTEXT_FILE_PATH, KEY_FILE_PATH)
     many_time_pad.decrypt(CIPHERTEXT_FILE_PATH, KEY_FILE_PATH)
+
+    input("Press [ENTER] to Attack the Many Time Pad")
 
     many_time_pad.attack(LIST_OF_CIPHERTEXTS_FILE_PATH)
