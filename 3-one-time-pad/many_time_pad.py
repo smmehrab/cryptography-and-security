@@ -258,7 +258,7 @@ class ManyTimePad():
             print(HLINE)
             print("Batch Brute Force")
             print(HLINE)
-
+        
         # Batch Brute Force
         batch_size = MTPUtil._batch_size_prompt(number_of_positions, candidate_key_byte_counts)
         batch_bruteforce = BatchBruteforce(number_of_positions, list_of_candidate_key_bytes, list_of_ciphertext_bytes, self._words, batch_size, self._decrypt)

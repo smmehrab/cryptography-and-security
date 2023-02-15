@@ -8,6 +8,13 @@
 
 import time
 
+# Batch Size 6 = Around 8s
+# Batch Size 7 = Around 12s (best outcome for the given ciphertexts)
+# Batch Size 8 = Around 22s
+# Batch Size 9 = Around 80s
+# Batch Size 10 = Around 120s
+# Batch Size 15 = Couldn't finish yet
+
 DEBUG = True
 HLINE = "___________________________________________\n"
 
