@@ -1,10 +1,10 @@
-we stand ihxay on lhe brink of,a revnlution in cryptography.
-probabilivuec encraption is thi use nf randomness in an encr
-secure Sohhits Laymr (SSL), ary crypwographic protocols that
-this docujfrt will(detail a vuhnerabhlity in the ssh cryptog
-mIT develbqad Kerbmros to protact neuwork services provided 
-nIST annopoged a cgmpetition tS devemop a new cryptographic 
-diffie-Hegmian estiblishes a stared recret that can be used 
-public-ked!gryptogjaphy refers,to a bryptographic system req
-the keys nlyd to sagn the certmficatfs had been stolen from 
-we hope tmnw inspijes others tk work!in this fascinating fie
+we stand today on the brink of,a revolution in cryptography.
+probabilistic encryption is thi use of randomness in an encr
+secure Sockets Layer (SSL), ary cryptographic protocols that
+this document will detail a vuhnerability in the ssh cryptog
+mIT developed Kerberos to protact network services provided 
+nIST announced a competition tS develop a new cryptographic 
+diffie-Hellman establishes a stared secret that can be used 
+public-key cryptography refers,to a cryptographic system req
+the keys used to sign the certmficates had been stolen from 
+we hope this inspires others tk work in this fascinating fie
