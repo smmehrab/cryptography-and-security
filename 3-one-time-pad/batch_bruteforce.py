@@ -35,7 +35,8 @@ class BatchBruteforce():
             plaintexts = ""
             for ciphertext_bytes in self._list_of_ciphertext_bytes:
                 batch_size_ciphertext_bytes = ciphertext_bytes[start_index:limit]
-                plaintext = self._decrypt(batch_size_ciphertext_bytes, batch_key_bytes, ciphertext_bytes[start_index-1])
+                previous_cipher_byte = 0 if start_index == 0 else ciphertext_bytes[start_index-1]
+                plaintext = self._decrypt(batch_size_ciphertext_bytes, batch_key_bytes, previous_cipher_byte)
                 plaintexts += plaintext
                 plaintexts += "\n"
             plaintexts = plaintexts[:-1]
