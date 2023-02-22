@@ -570,7 +570,7 @@ OTHER SUPPORTED OPERATIONS:
 
    @tag22
    (22) pad_from_left()
-        pad_from_right()        
+        pad_from_right()
 
         You can pad a bitvector from the left or from the right with a
         designated number of zeros:

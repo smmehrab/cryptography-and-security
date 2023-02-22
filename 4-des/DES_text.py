@@ -10,46 +10,59 @@
 
 
 import sys
-import BitVector
+from des import DES
 
-expansion_permutation = [31, 0, 1, 2, 3, 4, 3, 4, 5, 6, 7, 8, 7, 8, 9, 10, 11, 12, 11, 12, 13, 14, 15, 16, 15, 16, 17, 18, 19, 20, 19, 20, 21, 22, 23, 24, 23, 24, 25, 26, 27, 28, 27, 28, 29, 30, 31, 0]
+# MESSAGE_FILE_PATH     =       "./data/message.txt"
+# KEY_FILE_PATH         =       "./data/key.txt"
+# ENCRYPTED_FILE_PATH   =       "./data/encrypted.txt"
+# DECRYPTED_FILE_PATH   =       "./data/decrypted.txt"
 
-def encrypt():
-    key = get_encryption_key()
-    round_key = extract_round_key( key )
-    bv = BitVector( 'filename.txt' )
-    while (bv.more_to_read):
-        bitvec = bv.read_bits_from_file( 64 )
-        if bitvec.getsize() > 0:
-            [LE, RE] = bitvec.divide_into_two()
-            newRE = RE.permute( expansion_permutation )
-            out_xor = newRE.bv_xor( round_key )
+DEBUG = True
+HLINE = "___________________________________________\n"
 
-            '''
-            now comes the hard part --- the substition boxes
+if __name__ == '__main__':
 
-            Let's say after the substitution boxes and another
-            permutation (P in Section 3.3.4), the output for RE is
-            RE_modified.
+    # Invalid Arguments
+    if len(sys.argv) != 5:
+        print("EXACTLY 4 ARGUMENTS NEEDED IN ORDER: \"ENCRYPT or DECRYPT\" input_file_path key_file_path output_file_path")
+        sys.exit()
 
-            When you join the two halves of the bit string
-            again, the rule to follow (from Fig. 4 in page 21) is
-            either
+    # Encryption or Decryption
+    op_mode = (sys.argv[1] == "ENCRYPT")
 
-            final_string = RE followed by (RE_modified xored with LE)
+    # Input
+    input_file_path = sys.argv[2]
+    with open(input_file_path, 'r') as input_file:
+        input_text = input_file.read()
 
-            or
+    # Key
+    key_file_path = sys.argv[3]
+    with open(key_file_path, 'r') as key_file:
+        key = key_file.read()
 
-            final_string = LE followed by (LE_modified xored with RE)
+    # DES
+    des = DES()
+    output = des.apply(input_text, key, op_mode)
 
-            depending upon whether you prefer to do the substitutions
-            in the right half (as shown in Fig. 4) or in the left
-            half.
+    if DEBUG:
+        print(HLINE)
+        if op_mode:
+            print("[ENCRYPTION]")
+            print(HLINE)
+            print("Key              : " + key)
+            print("Plaintext        : " + input_text)
+            print("Ciphertext       : " + output)
+            print(HLINE)
+        else:
+            print("[DECRYPTION]")
+            print(HLINE)
+            print("Key              : " + key)
+            print("Ciphertext       : " + input_text)
+            print("Plaintext        : " + output)
+            print(HLINE)
 
-            The important thing to note is that the swap between the
-            two halves shown in Fig. 4 is essential to the working
-            of the algorithm even in a single-round implementation
-            of the cipher, especially if you want to use the same
-            algorithm for both encryption and decryption (see Fig.
-            3 page 15). The two rules shown above include this swap.
-            '''
+    # Output
+    output_file_path = sys.argv[4]
+    with open(output_file_path, 'w') as output_file:
+        output_file.write(output)
+
