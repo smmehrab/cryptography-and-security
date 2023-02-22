@@ -196,3 +196,42 @@ class DES:
                 output += block.get_bitvector_in_ascii()
 
         return output
+
+    def apply_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
+        """
+            Encrypt/Decrypt Image Applying DES
+        """
+
+        # Input Init
+        with open(input_img_path, 'rb') as input_img_file:
+            magic = input_img_file.readline()
+            dimension = input_img_file.readline()
+            maxval = input_img_file.readline()
+            input_img_raw = input_img_file.read()
+
+        # Output Init
+        OUTPUT = open(output_img_path, "wb")
+        OUTPUT.write(magic)
+        OUTPUT.write(dimension)
+        OUTPUT.write(maxval)
+
+        # Key
+        key = BitVector(textstring=key_ascii)
+        key = key.permute(key_permutation_1) # 64 bit --> 56 bit
+        round_keys = self._generate_round_keys(key)
+
+        # Input Image to BitVector
+        input_bv = BitVector(filename=input_img_path)
+
+        # Iterate Input By Blocks
+        while input_bv.more_to_read:
+            # block
+            block = input_bv.read_bits_from_file(64)
+            block = self._padding(block)
+            # fiestel
+            block = self._fiestel(block, round_keys, encryption)
+            # output
+            block.write_to_file(OUTPUT)
+
+        OUTPUT.close()
+
