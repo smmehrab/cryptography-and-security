@@ -162,14 +162,14 @@ class DES:
         block = R + L
         return block
 
-    def apply(self, input_raw, key_hexstring, encryption=True):
+    def apply(self, input_raw, key_ascii, encryption=True):
         """
             Encrypt/Decrypt Applying DES
         """
         output = ""
 
         # Key
-        key = BitVector(hexstring=key_hexstring)
+        key = BitVector(textstring=key_ascii)
         key = key.permute(key_permutation_1) # 64 bit --> 56 bit
         round_keys = self._generate_round_keys(key)
 
