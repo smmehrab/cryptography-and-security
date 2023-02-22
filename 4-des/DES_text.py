@@ -17,6 +17,9 @@ from des import DES
 # ENCRYPTED_FILE_PATH   =       "./data/encrypted.txt"
 # DECRYPTED_FILE_PATH   =       "./data/decrypted.txt"
 
+# ./DES_text.py "ENCRYPT" data/message.txt data/key.txt data/encrypted.txt
+# ./DES_text.py "DECRYPT" data/encrypted.txt data/key.txt data/decrypted.txt 
+
 DEBUG = True
 HLINE = "___________________________________________\n"
 
