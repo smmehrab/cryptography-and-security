@@ -8,6 +8,8 @@
 
 from BitVector import *
 
+TMP_FILE_PATH = "./img/tmp.txt"
+
 # Key Permutations
 
 key_permutation_1 = [   56, 48, 40, 32, 24, 16,  8,  0,
@@ -233,6 +235,9 @@ class DES:
             maxval = input_img_file.readline()
             input_img_raw = input_img_file.read()
 
+        with open(TMP_FILE_PATH, 'wb') as input_img_file:
+            input_img_file.write(input_img_raw)
+
         # Output Init
         OUTPUT = open(output_img_path, "wb")
         OUTPUT.write(magic)
@@ -245,7 +250,7 @@ class DES:
         round_keys = self._generate_round_keys(key)
 
         # Input Image to BitVector
-        input_bv = BitVector(filename=input_img_path)
+        input_bv = BitVector(filename=TMP_FILE_PATH)
 
         # Iterate Input By Blocks
         while input_bv.more_to_read:
