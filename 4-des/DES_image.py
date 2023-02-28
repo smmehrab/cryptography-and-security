@@ -11,12 +11,13 @@
 import sys
 from des import DES
 
-# IMG_FILE_PATH     =       "./img/image.ppm"
+# IMG_FILE_PATH         =       "./img/image.ppm"
 # KEY_FILE_PATH         =       "./data/key.txt"
-# ENCRYPTED_IMG_PATH   =       "./img/image_enc.ppm"
-# DECRYPTED_IMG_PATH   =       "./data/decrypted.txt"
+# ENCRYPTED_IMG_PATH    =       "./img/image_enc.ppm"
+# DECRYPTED_IMG_PATH    =       "./data/decrypted.txt"
 
 # ./DES_image.py "ENCRYPT" img/image.ppm data/key.txt img/image_enc.ppm 
+# ./DES_image.py "DECRYPT" img/image_enc.ppm data/key.txt img/image_dec.ppm 
 
 if __name__ == '__main__':
 
@@ -29,7 +30,6 @@ if __name__ == '__main__':
     input_img_path = sys.argv[2]
     key_file_path = sys.argv[3]
     output_img_path = sys.argv[4]
-
 
     # Key
     with open(key_file_path, 'r') as key_file:

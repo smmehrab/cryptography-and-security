@@ -18,6 +18,8 @@ from des_config import expansion_permutation
 from des_config import s_boxes
 from des_config import p_box
 
+DEBUG = True
+
 class DES:
     """
         Data Encryption Standard (DES)
@@ -89,49 +91,20 @@ class DES:
         block = R + L
         return block
 
-    def apply(self, input_raw, key_ascii, encryption=True):
+    def _ecb_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
         """
-            Encrypt/Decrypt Applying DES
+            DES on Image
+            Mode: Electronic Code Book
         """
-        output = ""
 
-        # Key
-        key = BitVector(textstring=key_ascii)
-        key = key.permute(key_permutation_1) # 64 bit --> 56 bit
-        round_keys = self._generate_round_keys(key)
-
-        # Input to BitVector
-        if encryption:
-            input_bv = BitVector(textstring=input_raw)
-        else:
-            input_bv = BitVector(hexstring=input_raw)
-
-        # Iterate Input By Blocks
-        total_bits = len(input_bv)
-        bit_index = 0
-        while bit_index<total_bits:
-            # block
-            block = input_bv[bit_index:min((bit_index+64), total_bits)]
-            bit_index += 64
-            block = self._padding(block)
-            # ip
-            block = block.permute(ip)
-            # fiestel
-            block = self._fiestel(block, round_keys, encryption)
-            # ip inverse
-            block = block.permute(ip_inverse)
-            # output
+        if DEBUG:
+            print("______________________\n")
+            print("DES on Image (ECB)")
+            print("______________________\n")
             if encryption:
-                output += block.get_bitvector_in_hex()
+                print("Encrypting ...\n")
             else:
-                output += block.get_bitvector_in_ascii()
-
-        return output
-
-    def apply_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
-        """
-            Encrypt/Decrypt Image Applying DES
-        """
+                print("Decrypting ...\n")
 
         # Input Init
         with open(input_img_path, 'rb') as input_img_file:
@@ -158,7 +131,11 @@ class DES:
         input_bv = BitVector(filename=TMP_FILE_PATH)
 
         # Iterate Input By Blocks
+        block_index = 0
         while input_bv.more_to_read:
+            if DEBUG:
+                print(f"\r[{block_index}]", end="")
+                block_index += 1
             # block
             block = input_bv.read_bits_from_file(64)
             block = self._padding(block)
@@ -171,5 +148,163 @@ class DES:
             # output
             block.write_to_file(OUTPUT)
 
+        if DEBUG:
+            print("\n______________________\n")
+            print("[DONE]\n")
+
         OUTPUT.close()
+
+    def _cbc_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
+        """
+            DES on Image
+            Mode: Cipher Block Chaining
+        """
+
+        if DEBUG:
+            print("______________________\n")
+            print("DES on Image (CBC)")
+            print("______________________\n")
+            if encryption:
+                print("Encrypting ...\n")
+            else:
+                print("Decrypting ...\n")
+
+        # Input Init
+        if not encryption:
+            input_img_path = input_img_path[:-4]
+            input_img_path += "_cbc.ppm"
+
+        with open(input_img_path, 'rb') as input_img_file:
+            magic = input_img_file.readline()
+            dimension = input_img_file.readline()
+            maxval = input_img_file.readline()
+            input_img_raw = input_img_file.read()
+
+        with open(TMP_FILE_PATH, 'wb') as input_img_file:
+            input_img_file.write(input_img_raw)
+
+        # Output Init
+        output_img_path = output_img_path[:-4]
+        output_img_path += "_cbc.ppm"
+
+        OUTPUT = open(output_img_path, "wb")
+        OUTPUT.write(magic)
+        OUTPUT.write(dimension)
+        OUTPUT.write(maxval)
+
+        # Key
+        key = BitVector(textstring=key_ascii)
+        key = key.permute(key_permutation_1) # 64 bit --> 56 bit
+        round_keys = self._generate_round_keys(key)
+
+        # Input Image to BitVector
+        input_bv = BitVector(filename=TMP_FILE_PATH)
+
+        # Passphrase
+        passphrase = "Testing DES Image Encryption Using CBC"
+        passphrase_block_count = len(passphrase)//64
+        iv = BitVector(bitlist = [0]*64)
+        for i in range(0, passphrase_block_count):
+            textstr = passphrase[i*64:(i+1)*64]
+            iv ^= BitVector(textstring = textstr)
+
+        # Iterate Input By Blocks
+        block_index = 0
+        while input_bv.more_to_read:
+            if DEBUG:
+                print(f"\r[{block_index}]", end="")
+                block_index += 1
+            # block
+            block = input_bv.read_bits_from_file(64)
+            block = self._padding(block)
+            # CBC
+            if encryption:
+                block = block ^ iv
+            else:
+                tmp = block
+            # ip
+            block = block.permute(ip)
+            # fiestel
+            block = self._fiestel(block, round_keys, encryption)
+            # ip inverse
+            block = block.permute(ip_inverse)
+            # CBC
+            if encryption:
+                tmp = block
+            else:
+                block = block ^ iv
+            iv = tmp
+            # output
+            block.write_to_file(OUTPUT)
+
+        if DEBUG:
+            print("\n______________________\n")
+            print("[DONE]\n")
+
+        OUTPUT.close()
+
+    def apply(self, input_raw, key_ascii, encryption=True):
+        """
+            Encrypt/Decrypt Applying DES
+        """
+
+        if DEBUG:
+            print("______________________\n")
+            print("DES on Text")
+            print("______________________\n")
+            if encryption:
+                print("Encrypting ...\n")
+            else:
+                print("Decrypting ...\n")
+
+        output = ""
+
+        # Key
+        key = BitVector(textstring=key_ascii)
+        key = key.permute(key_permutation_1) # 64 bit --> 56 bit
+        round_keys = self._generate_round_keys(key)
+
+        # Input to BitVector
+        if encryption:
+            input_bv = BitVector(textstring=input_raw)
+        else:
+            input_bv = BitVector(hexstring=input_raw)
+
+        # Iterate Input By Blocks
+        total_bits = len(input_bv)
+        bit_index = 0
+        block_index = 0
+        while bit_index<total_bits:
+            if DEBUG:
+                print(f"\r[{block_index}]", end="")
+                block_index += 1
+            # block
+            block = input_bv[bit_index:min((bit_index+64), total_bits)]
+            bit_index += 64
+            block = self._padding(block)
+            # ip
+            block = block.permute(ip)
+            # fiestel
+            block = self._fiestel(block, round_keys, encryption)
+            # ip inverse
+            block = block.permute(ip_inverse)
+            # output
+            if encryption:
+                output += block.get_bitvector_in_hex()
+            else:
+                output += block.get_bitvector_in_ascii()
+
+        if DEBUG:
+            print("\n______________________\n")
+            print("[DONE]\n")
+
+        return output
+
+    def apply_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
+        """
+            Encrypt/Decrypt Image Applying DES
+        """
+
+        self._ecb_on_image(input_img_path, key_ascii, output_img_path, encryption)
+        self._cbc_on_image(input_img_path, key_ascii, output_img_path, encryption)
 
