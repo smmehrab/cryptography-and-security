@@ -1,4 +1,7 @@
+# File Paths
+
 TMP_FILE_PATH = "./img/tmp.txt"
+PASSPHRASE_FILE_PATH = "./data/passphrase.txt"
 
 # Key Permutations
 

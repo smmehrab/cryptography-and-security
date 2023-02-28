@@ -9,6 +9,7 @@
 from BitVector import *
 
 from des_config import TMP_FILE_PATH
+from des_config import PASSPHRASE_FILE_PATH
 from des_config import key_permutation_1
 from des_config import key_permutation_2
 from des_config import shifts_for_round_key_gen
@@ -199,8 +200,9 @@ class DES:
         # Input Image to BitVector
         input_bv = BitVector(filename=TMP_FILE_PATH)
 
-        # Passphrase
-        passphrase = "Testing DES Image Encryption Using CBC"
+        # IV
+        with open(PASSPHRASE_FILE_PATH, 'r') as PASSPHRASE_FILE:
+            passphrase = PASSPHRASE_FILE.read()
         passphrase_block_count = len(passphrase)//64
         iv = BitVector(bitlist = [0]*64)
         for i in range(0, passphrase_block_count):
