@@ -23,7 +23,6 @@ DEBUG = True
 class DES:
     """
         Data Encryption Standard (DES)
-        - Operation Mode: ECB (Electronic Code Book)
         - All internal states handled using BitVector
     """
 
@@ -94,7 +93,7 @@ class DES:
     def _ecb_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
         """
             DES on Image
-            Mode: Electronic Code Book
+            Operation Mode: Electronic Code Book
         """
 
         if DEBUG:
@@ -157,7 +156,7 @@ class DES:
     def _cbc_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
         """
             DES on Image
-            Mode: Cipher Block Chaining
+            Operation Mode: Cipher Block Chaining
         """
 
         if DEBUG:
@@ -245,7 +244,8 @@ class DES:
 
     def apply(self, input_raw, key_ascii, encryption=True):
         """
-            Encrypt/Decrypt Applying DES
+            Encrypt/Decrypt Text Applying DES
+            - Operation Mode: ECB (Electronic Code Book)
         """
 
         if DEBUG:
@@ -303,6 +303,8 @@ class DES:
     def apply_on_image(self, input_img_path, key_ascii, output_img_path, encryption=True):
         """
             Encrypt/Decrypt Image Applying DES
+            - Operation Mode: ECB (Electronic Code Book)
+            - Operation Mode: CBC (Cipher Block Chaining)
         """
 
         self._ecb_on_image(input_img_path, key_ascii, output_img_path, encryption)
