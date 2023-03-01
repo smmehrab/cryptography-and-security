@@ -9,7 +9,12 @@
 from BitVector import *
 
 from des_config import TMP_FILE_PATH
+
 from des_config import PASSPHRASE_FILE_PATH
+
+from des_config import AVALANCHE_PLAINTEXT_OUTPUT_PATH
+from des_config import AVALANCHE_KEY_OUTPUT_PATH
+
 from des_config import key_permutation_1
 from des_config import key_permutation_2
 from des_config import shifts_for_round_key_gen
@@ -29,6 +34,19 @@ class DES:
 
     def __init__(self) -> None:
         pass
+
+    def _change_ith_bit(self, i, bv):
+        bv[i] = 1-bv[i]
+        return bv
+
+    def _hamming_distance(self, str1, str2):
+        i = 0
+        count = 0
+        while(i < len(str1)):
+            if(str1[i] != str2[i]):
+                count += 1
+            i += 1
+        return count
 
     def _generate_round_keys(self, key):
         """
@@ -312,3 +330,132 @@ class DES:
         self._ecb_on_image(input_img_path, key_ascii, output_img_path, encryption)
         self._cbc_on_image(input_img_path, key_ascii, output_img_path, encryption)
 
+    def avalanche_effect(self, input_raw, key_ascii, encryption=True):
+        """
+            Show Avalanche Effect of DES 
+            - Plaintext
+            - Key
+            (Always Encryption)
+        """
+
+        original_cipher = self.apply(input_raw, key_ascii, encryption)
+
+        #################################################
+        # Avalanche Effect on Plaintext
+        #################################################
+
+        if DEBUG:
+            print("______________________\n")
+            print("Avalanche Effect on Plaintext")
+            print("Calculating...\n")
+
+        # Key
+        key = BitVector(textstring=key_ascii)
+        key = key.permute(key_permutation_1) # 64 bit --> 56 bit
+        round_keys = self._generate_round_keys(key)
+
+        # Input
+        input_bv = BitVector(textstring=input_raw)
+        total_bits = len(input_bv)
+
+        AVALANCHE_OUTPUT = open(AVALANCHE_PLAINTEXT_OUTPUT_PATH, 'w')
+        print(f"Number of Bits on Plaintext:    {total_bits}\n", file=AVALANCHE_OUTPUT)
+        print("___________________________________________________________\n", file=AVALANCHE_OUTPUT)
+        print("Avalanche Effect (Plaintext)", file=AVALANCHE_OUTPUT)
+        print("___________________________________________________________\n", file=AVALANCHE_OUTPUT)
+        print(f"Plaintext Bit Change        Ciphertext Bit Change (%)", file=AVALANCHE_OUTPUT)
+        print(f"----------------------------------------------------------", file=AVALANCHE_OUTPUT)
+        outputs = []
+        limit = min(total_bits, 1000)
+        for i in range(limit):
+            input_bv = self._change_ith_bit(i, input_bv)
+
+            output = ""
+
+            # Iterate Input By Blocks
+            bit_index = 0
+            while bit_index<total_bits:
+                # block
+                block = input_bv[bit_index:min((bit_index+64), total_bits)]
+                bit_index += 64
+                block = self._padding(block)
+                # ip
+                block = block.permute(ip)
+                # fiestel
+                block = self._fiestel(block, round_keys, encryption)
+                # ip inverse
+                block = block.permute(ip_inverse)
+                # output
+                output += block.get_bitvector_in_hex()
+
+            hamming_distance_with_original_cipher = self._hamming_distance(original_cipher, output)
+            percent_change_in_ciphertext = float((hamming_distance_with_original_cipher)/total_bits)*100
+            print('{:20d} {:30f} '.format(i+1, percent_change_in_ciphertext), file=AVALANCHE_OUTPUT)
+
+            outputs.append(output)
+
+        AVALANCHE_OUTPUT.close()
+
+        if DEBUG:
+            print("______________________\n")
+            print("[DONE]\n")
+
+        #################################################
+        # Avalanche Effect on Key
+        #################################################
+
+        if DEBUG:
+            print("______________________\n")
+            print("Avalanche Effect on Key")
+            print("Calculating...\n")
+
+        # Key
+        key = BitVector(textstring=key_ascii)
+
+        # Input
+        input_bv = BitVector(textstring=input_raw)
+        total_bits = len(input_bv)
+
+        AVALANCHE_OUTPUT = open(AVALANCHE_KEY_OUTPUT_PATH, 'w')
+
+        print(f"Number of Bits on Plaintext:    {total_bits}\n", file=AVALANCHE_OUTPUT)
+        print("___________________________________________________________\n", file=AVALANCHE_OUTPUT)
+        print("Avalanche Effect (Key)", file=AVALANCHE_OUTPUT)
+        print("___________________________________________________________\n", file=AVALANCHE_OUTPUT)
+        print(f"Key Bit Change        Ciphertext Bit Change (%)", file=AVALANCHE_OUTPUT)
+        print(f"----------------------------------------------------------", file=AVALANCHE_OUTPUT)
+        outputs = []
+        for i in range(64):
+            changed_key = self._change_ith_bit(i, key)
+            changed_key = changed_key.permute(key_permutation_1) # 64 bit --> 56 bit
+            round_keys = self._generate_round_keys(changed_key)
+
+            output = ""
+
+            # Iterate Input By Blocks
+            bit_index = 0
+            while bit_index<total_bits:
+                # block
+                block = input_bv[bit_index:min((bit_index+64), total_bits)]
+                bit_index += 64
+                block = self._padding(block)
+                # ip
+                block = block.permute(ip)
+                # fiestel
+                block = self._fiestel(block, round_keys, encryption)
+                # ip inverse
+                block = block.permute(ip_inverse)
+                # output
+                output += block.get_bitvector_in_hex()
+
+            hamming_distance_with_original_cipher = self._hamming_distance(original_cipher, output)
+            percent_change_in_ciphertext = float((hamming_distance_with_original_cipher)/total_bits)*100
+            print('{:14d} {:30f} '.format(i+1, percent_change_in_ciphertext), file=AVALANCHE_OUTPUT)
+
+            outputs.append(output)
+
+        AVALANCHE_OUTPUT.close()
+
+        if DEBUG:
+            print("______________________\n")
+            print("[DONE]\n")

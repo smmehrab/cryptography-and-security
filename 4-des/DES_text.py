@@ -47,6 +47,9 @@ if __name__ == '__main__':
     des = DES()
     output = des.apply(input_text, key, op_mode)
 
+    if op_mode:
+        des.avalanche_effect(input_text, key, op_mode)
+
     if DEBUG:
         print(HLINE)
         if op_mode:

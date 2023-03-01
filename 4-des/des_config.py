@@ -2,6 +2,8 @@
 
 TMP_FILE_PATH = "./img/tmp.txt"
 PASSPHRASE_FILE_PATH = "./data/passphrase.txt"
+AVALANCHE_PLAINTEXT_OUTPUT_PATH = "./data/avalanche_plaintext.txt"
+AVALANCHE_KEY_OUTPUT_PATH = "./data/avalanche_key.txt"
 
 # Key Permutations
 
