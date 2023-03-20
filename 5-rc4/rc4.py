@@ -60,7 +60,7 @@ class RC4:
             print(HLINE)
 
         total_bits = len(input_bv)
-        block_index = 0
+        byte_index = 0
         bit_index = 0
 
         i, j = 0, 0
@@ -74,20 +74,20 @@ class RC4:
             k = S[t]
             k_bv = BitVector(intVal = k, size = 8)
 
-            # input block
-            block_bv = input_bv[bit_index:bit_index+8]
+            # input byte
+            input_byte_bv = input_bv[bit_index:bit_index+8]
 
             if DEBUG:
-                print(f"\r[{block_index}] {block_bv}", end="")
+                print(f"\r[{byte_index}] {input_byte_bv}", end="")
 
-            block_index += 1
+            byte_index += 1
             bit_index += 8
 
             # encryption/decryption
-            output_bv = block_bv ^ k_bv
-            
+            output_byte_bv = input_byte_bv ^ k_bv
+
             # output
-            output_bv.write_to_file(OUTPUT)
+            output_byte_bv.write_to_file(OUTPUT)
         
         if DEBUG:
             print("")
@@ -117,4 +117,3 @@ class RC4:
         self._exec_stream_cipher(input_bv, S, OUTPUT)
 
         return
-
