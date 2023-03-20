@@ -25,15 +25,15 @@ class RC4:
             State Vector - S
         """
 
+        # key ascii to key ascii code
         key_length = len(key_ascii)
         key = []
         for c in key_ascii:
             key.append(ord(c))
 
+        # Initialization
         S = [0]*256
         T = [0]*256
-
-        # Initialization
         for i in range(256):
             S[i] = i
             T[i] = key[i%key_length]
