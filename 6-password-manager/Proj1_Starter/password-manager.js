@@ -2,35 +2,52 @@
 
 /********* External Imports ********/
 
-const { byteArrayToString, genRandomSalt, untypedToTypedArray, bufferToUntypedArray } = require("./lib");
 const { subtle } = require('crypto').webcrypto;
+const Util  = require("./lib");
 
 /********* Implementation ********/
+const HMAC_PHRASE = "HMAC_PHRASE";
+const AESGCM_PHRASE = "AESGCM_PHRASE";
+const masterPasswordPhrase = "MASTER_PW_PHRASE";
+const PBKDF2_ITERATIONS = 100000;
+
 class Keychain {
   /**
    * Initializes the keychain using the provided information. Note that external
    * users should likely never invoke the constructor directly and instead use
    * either Keychain.init or Keychain.load. 
    * Arguments:
-   *  You may design the constructor with any parameters you would like. 
+   * You may design the constructor with any parameters you would like. 
    * Return Type: void
    */
-  constructor() {
-    this.data = { 
+  constructor(salt, HMAC_KEY, AES_KEY, masterPasswordPhraseSigned) {
+    this.data = {
       /* Store member variables that you intend to be public here
-         (i.e. information that will not compromise security if an adversary sees) */
+         (i.e. informationUtil that will not compromise security if an adversary sees) */
+      version: "CSEDU Password Manager v1.0",
+      kvs: {},
+      salt: salt,
+      HMAC_PHRASE: HMAC_PHRASE,
+      AESGCM_PHRASE: AESGCM_PHRASE,
+      masterPasswordPhrase: masterPasswordPhrase,
+      masterPasswordPhraseSigned: masterPasswordPhraseSigned,
     };
+
     this.secrets = {
       /* Store member variables that you intend to be private here
          (information that an adversary should NOT see). */
+      HMAC_KEY: HMAC_KEY,
+      AES_KEY: AES_KEY,
     };
 
-    this.data.version = "CS 255 Password Manager v1.0";
-    // Flag to indicate whether password manager is "ready" or not
     this.ready = true;
-
-    throw "Not Implemented!";
   };
+
+  readyCheck() {
+    if (!this.ready) {
+      throw "Keychain not initialized.";
+    }
+  }
 
   /** 
     * Creates an empty keychain with the given password. Once the constructor
@@ -38,10 +55,19 @@ class Keychain {
     *
     * Arguments:
     *   password: string
-    * Return Type: void
+    * Return Type: KeyChain
     */
   static async init(password) {
-    throw "Not Implemented!";
+    // Key Generation
+    let [salt, masterKey] = await Util.generateMasterKey(password);
+    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_PHRASE);
+    let AES_KEY = await Util.generateAESKey(masterKey, AESGCM_PHRASE);
+
+    let masterPasswordPhraseSigned = await Util.sign_master_password_phrase(masterKey, masterPasswordPhrase);
+
+    // Password Manager Init
+    let passwordManager = new Keychain(salt, HMAC_KEY, AES_KEY, masterPasswordPhraseSigned);
+    return passwordManager;
   }
 
   /**
@@ -62,7 +88,41 @@ class Keychain {
     * Return Type: Keychain
     */
   static async load(password, repr, trustedDataCheck) {
-    throw "Not Implemented!";
+
+    // Validate Checksum: handles rollback attack
+    if (trustedDataCheck !== undefined) {
+      // SHA-256 Checksum
+      let checksum = await subtle.digest("SHA-256", repr);
+      checksum = Util.arrayBufferToBase64(checksum);
+      if (checksum !== trustedDataCheck) {
+        throw "[CHECKSUM FAILURE] Data has been tampered with!";
+      }
+    }
+
+    // Check for salt in repr
+    let keychain = JSON.parse(repr);
+    if (!("salt" in keychain) || (keychain["salt"] == undefined)) {
+      throw "Salt not found in repr!";
+    }
+
+    // Regenerate Master Key from Password
+    let [salt, masterKey] = await Util.generateMasterKey(password, keychain["salt"]);
+    let masterPasswordPhraseSigned = keychain["masterPasswordPhraseSigned"];
+
+    // Check provided password is valid for keychain
+    if (masterPasswordPhraseSigned == undefined || ! await Util.check_master_password_phrase(masterKey, masterPasswordPhraseSigned, masterPasswordPhrase)) {
+      throw "Password is not valid for keychain!";
+    }
+
+    // HMAC Key from Master Key
+    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_PHRASE);
+    // AES Key from Master Key
+    let AES_KEY = await Util.generateAESKey(masterKey, AESGCM_PHRASE);
+
+    // New Password Manager with Old Data
+    this.passwordManager = new Keychain(salt, HMAC_KEY, AES_KEY, masterPasswordPhraseSigned);
+    this.passwordManager.data = keychain;
+    return this.passwordManager;
   };
 
   /**
@@ -77,9 +137,20 @@ class Keychain {
     * password manager is not in a ready-state, return null.
     *
     * Return Type: array
-    */ 
+    */
   async dump() {
-    throw "Not Implemented!";
+    if (!this.ready) {
+      return null;
+    }
+
+    // Serialization of keychain data
+    let repr = JSON.stringify(this.data);
+
+    // SHA-256 Checksum
+    let trustedDataCheck = await subtle.digest("SHA-256", repr);
+    trustedDataCheck = Util.arrayBufferToBase64(trustedDataCheck);
+
+    return [repr, trustedDataCheck];
   };
 
   /**
@@ -93,8 +164,27 @@ class Keychain {
     * Return Type: Promise<string>
     */
   async get(name) {
-    throw "Not Implemented!";
-  };
+    this.readyCheck();
+
+    let password = null;
+
+    // HMAC of domain name (Base64)
+    let nameHMAC = await Util.HMAC(this.secrets.HMAC_KEY, name);
+
+    // If Exists in KVS
+    if (this.data.kvs[nameHMAC] !== undefined) {
+      // Decrypt
+      let passwordData = await Util.decryptPassword(this.data.kvs[nameHMAC], this.secrets.AES_KEY);
+      // Handles Swap Attack
+      var nameHMACIndex = passwordData.indexOf(nameHMAC);
+      if (nameHMACIndex == -1) {
+        throw "[SWAP ATTACK DETECTED]";
+      }
+      password = passwordData.substring(0, nameHMACIndex);
+    }
+
+    return password;
+  }
 
   /** 
   * Inserts the domain and associated data into the KVS. If the domain is
@@ -108,8 +198,17 @@ class Keychain {
   * Return Type: void
   */
   async set(name, value) {
-    throw "Not Implemented!";
-  };
+    this.readyCheck();
+
+    // HMAC of domain name (Base64)
+    let nameHMAC = await Util.HMAC(this.secrets.HMAC_KEY, name);
+
+    // Encrypted Password Data = IV (Base64) + Encrypt (Password + nameHMAC + Random Noise Padding)
+    let encryptedPasswordData = await Util.encryptPassword(nameHMAC, value, this.secrets.AES_KEY);
+
+    // Set
+    this.data.kvs[nameHMAC] = encryptedPasswordData;
+  }
 
   /**
     * Removes the record with name from the password manager. Returns true
@@ -121,10 +220,20 @@ class Keychain {
     * Return Type: Promise<boolean>
   */
   async remove(name) {
-    throw "Not Implemented!";
-  };
+    this.readyCheck();
 
-  static get PBKDF2_ITERATIONS() { return 100000; }
+    // HMAC of domain name (Base64)
+    let nameHMAC = await Util.HMAC(this.secrets.HMAC_KEY, name);
+
+    // Check if it exists in the KVS
+    if (this.data.kvs[nameHMAC] !== undefined) {
+      // Remove
+      delete this.data.kvs[nameHMAC];
+      return true;
+    }
+
+    return false;
+  }
 };
 
 module.exports = {
