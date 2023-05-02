@@ -2,6 +2,9 @@
 
 const { getRandomValues, subtle } = require("crypto");
 const base64url = require("base64url");
+const argon2 = require("argon2");
+
+const ARGON2_ACTIVE = false;
 
 class Util {
 
@@ -50,6 +53,19 @@ class Util {
 
   static async generateMasterKey(password, salt, iterations) {
 
+    let passwordHash = password;
+
+    /*
+    * Argon2 Password Hash
+    */
+    if (ARGON2_ACTIVE) {
+      let saltArrayBuffer = Util.base64ToArrayBuffer(salt);
+      passwordHash = await argon2.hash(password,  { saltArrayBuffer, time: iterations });
+    }
+
+    /*
+    * PBKDF2 Key Derivation
+    */
     const HmacKeyGenParams = {
       name: 'HMAC',
       hash: 'SHA-256',
@@ -66,7 +82,7 @@ class Util {
     // Password to CryptoKey
     const passwordCryptoKey = await subtle.importKey(
       "raw",
-      password,
+      passwordHash,
       Pbkdf2Params,
       false,
       ["deriveKey"]
