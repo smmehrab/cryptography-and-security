@@ -102,17 +102,25 @@ class Util {
 
   static async generateHMACKey(masterKey, HMAC_KEY_DERIVATION_SALT) {
 
+    /**
+     * HKDF Key Derivation
+     * - Extract using HMAC, masterKey and HMACK_KEY_DERIVATION_SALT
+     * - Expand using HMAC, extractedPRKey and HMAC_KEY_GEN_PARAMS
+     */
+
     const HmacKeyGenParams = {
       name: 'HMAC',
       hash: 'SHA-256',
       length: 256,
     };
 
-    const HMAC_RAW_KEY = await subtle.sign("HMAC", masterKey, HMAC_KEY_DERIVATION_SALT);
+    // Extract
+    const extractedPRKey = await subtle.sign("HMAC", masterKey, HMAC_KEY_DERIVATION_SALT);
 
+    // Expand
     const HMAC_KEY = await subtle.importKey(
       "raw",
-      HMAC_RAW_KEY,
+      extractedPRKey,
       HmacKeyGenParams,
       false,
       ["sign"]
@@ -123,16 +131,24 @@ class Util {
 
   static async generateAESKey(masterKey, AES_KEY_DERIVATION_SALT) {
 
+    /**
+     * HKDF Key Derivation
+     * - Extract using HMAC, masterKey and AES_KEY_DERIVATION_SALT
+     * - Expand using AES-GCM, extractedPRKey and AesKeyGenParams
+     */
+
     const AesKeyGenParams = {
       name: 'AES-GCM',
       length: 256,
     };
 
-    const AES_RAW_KEY = await subtle.sign("HMAC", masterKey, AES_KEY_DERIVATION_SALT);
+    // Extract
+    const extractedPRKey = await subtle.sign("HMAC", masterKey, AES_KEY_DERIVATION_SALT);
 
+    // Expand
     const AES_KEY = await subtle.importKey(
       "raw",
-      AES_RAW_KEY,
+      extractedPRKey,
       AesKeyGenParams,
       false,
       ["encrypt", "decrypt"]
