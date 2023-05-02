@@ -133,7 +133,7 @@ describe('Password manager', async function() {
             expect(contentsObj).to.have.key('kvs');
             expect(contentsObj.kvs).to.be.an('object');
             // expect(Object.getOwnPropertyNames(contentsObj.kvs)).to.have.length(10);
-            expect(Object.getOwnPropertyNames(contentsObj.kvs)).to.have.length.greaterThan(10);
+            expect(Object.getOwnPropertyNames(contentsObj.kvs).length).greaterThan(10);
         })
 
     });
