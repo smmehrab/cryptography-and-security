@@ -15,9 +15,9 @@ class Util {
     return Util.arrayBufferToBase64(getRandomValues(new Uint8Array(bytes)));
   }
 
-  static generateRandomBase64Noise() {
-    // Max 100 Base64 Characters
-    let noiseLength = Math.floor(Math.random() * 75);
+  static generateRandomBase64Noise(maxBase64CharacterCount=100) {
+    let maxByteCount = Math.ceil((maxBase64CharacterCount * 3) / 4);
+    let noiseLength = Math.floor(Math.random() * maxByteCount);
     return Util.arrayBufferToBase64(getRandomValues(new Uint8Array(noiseLength)));
   }
 
