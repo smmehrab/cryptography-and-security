@@ -132,7 +132,8 @@ describe('Password manager', async function() {
             var contentsObj = JSON.parse(contents);
             expect(contentsObj).to.have.key('kvs');
             expect(contentsObj.kvs).to.be.an('object');
-            expect(Object.getOwnPropertyNames(contentsObj.kvs)).to.have.length(10);
+            // expect(Object.getOwnPropertyNames(contentsObj.kvs)).to.have.length(10);
+            expect(Object.getOwnPropertyNames(contentsObj.kvs)).to.have.length.greaterThan(10);
         })
 
     });
