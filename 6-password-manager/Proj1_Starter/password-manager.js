@@ -2,14 +2,11 @@
 
 /********* External Imports ********/
 
-const { subtle } = require("crypto").webcrypto;
-const { randomInt } = require("crypto");
+const { randomInt, subtle } = require("crypto");
 const Util = require("./lib");
 
 /********* Implementation ********/
-const HMAC_PHRASE = "HMAC_PHRASE";
-const AESGCM_PHRASE = "AESGCM_PHRASE";
-const masterPasswordPhrase = "MASTER_PW_PHRASE";
+
 const PBKDF2_ITERATIONS = 100000;
 
 class Keychain {
@@ -21,17 +18,16 @@ class Keychain {
    * You may design the constructor with any parameters you would like.
    * Return Type: void
    */
-  constructor(salt, HMAC_KEY, AES_KEY, masterPasswordPhraseSigned) {
+  constructor(salt, iterations, HMAC_KEY, AES_KEY, HMAC_KEY_DERIVATION_SALT, AES_KEY_DERIVATION_SALT) {
     this.data = {
       /* Store member variables that you intend to be public here
          (i.e. informationUtil that will not compromise security if an adversary sees) */
       version: "CSEDU Password Manager v1.0",
       kvs: {},
       salt: salt,
-      HMAC_PHRASE: HMAC_PHRASE,
-      AESGCM_PHRASE: AESGCM_PHRASE,
-      masterPasswordPhrase: masterPasswordPhrase,
-      masterPasswordPhraseSigned: masterPasswordPhraseSigned,
+      iterations: iterations,
+      HMAC_KEY_DERIVATION_SALT: HMAC_KEY_DERIVATION_SALT,
+      AES_KEY_DERIVATION_SALT: AES_KEY_DERIVATION_SALT,
     };
 
     this.secrets = {
@@ -59,23 +55,23 @@ class Keychain {
    * Return Type: KeyChain
    */
   static async init(password) {
-    // Key Generation
-    let [salt, masterKey] = await Util.generateMasterKey(password);
-    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_PHRASE);
-    let AES_KEY = await Util.generateAESKey(masterKey, AESGCM_PHRASE);
+    // Master Key Generation
+    let salt = Util.generateRandomSalt();
+    let iterations = PBKDF2_ITERATIONS;
+    let masterKey = null;
 
-    let masterPasswordPhraseSigned = await Util.sign_master_password_phrase(
-      masterKey,
-      masterPasswordPhrase
-    );
+    [salt, masterKey] = await Util.generateMasterKey(password, salt, iterations);
+
+    // HMAC Key Generation
+    let HMAC_KEY_DERIVATION_SALT = Util.generateRandomSalt(32);
+    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_KEY_DERIVATION_SALT);
+
+    // AES Key Generation
+    let AES_KEY_DERIVATION_SALT = Util.generateRandomSalt(32);
+    let AES_KEY = await Util.generateAESKey(masterKey, AES_KEY_DERIVATION_SALT);
 
     // Password Manager Init
-    let passwordManager = new Keychain(
-      salt,
-      HMAC_KEY,
-      AES_KEY,
-      masterPasswordPhraseSigned
-    );
+    let passwordManager = new Keychain(salt, iterations, HMAC_KEY, AES_KEY, HMAC_KEY_DERIVATION_SALT, AES_KEY_DERIVATION_SALT);
     return passwordManager;
   }
 
@@ -114,36 +110,22 @@ class Keychain {
     }
 
     // Regenerate Master Key from Password
-    let [salt, masterKey] = await Util.generateMasterKey(
-      password,
-      keychain["salt"]
-    );
-    let masterPasswordPhraseSigned = keychain["masterPasswordPhraseSigned"];
+    let salt = keychain["salt"];
+    let iterations = keychain["iterations"];
+    let masterKey = null;
 
-    // Check provided password is valid for keychain
-    if (
-      masterPasswordPhraseSigned == undefined ||
-      !(await Util.verify_master_password_phrase(
-        masterKey,
-        masterPasswordPhraseSigned,
-        masterPasswordPhrase
-      ))
-    ) {
-      throw "Password is not valid for keychain!";
-    }
+    [salt, masterKey] = await Util.generateMasterKey(password, salt, iterations);
 
-    // HMAC Key from Master Key
-    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_PHRASE);
-    // AES Key from Master Key
-    let AES_KEY = await Util.generateAESKey(masterKey, AESGCM_PHRASE);
+    // Regenerate HMAC Key from Master Key
+    const HMAC_KEY_DERIVATION_SALT = keychain["HMAC_KEY_DERIVATION_SALT"];
+    let HMAC_KEY = await Util.generateHMACKey(masterKey, HMAC_KEY_DERIVATION_SALT);
+    
+    // Regenerate AES Key from Master Key
+    const AES_KEY_DERIVATION_SALT = keychain["AES_KEY_DERIVATION_SALT"];
+    let AES_KEY = await Util.generateAESKey(masterKey, AES_KEY_DERIVATION_SALT);
 
     // New Password Manager with Old Data
-    this.passwordManager = new Keychain(
-      salt,
-      HMAC_KEY,
-      AES_KEY,
-      masterPasswordPhraseSigned
-    );
+    this.passwordManager = new Keychain(salt, iterations, HMAC_KEY, AES_KEY, HMAC_KEY_DERIVATION_SALT, AES_KEY_DERIVATION_SALT);
     this.passwordManager.data = keychain;
     return this.passwordManager;
   }
@@ -197,10 +179,7 @@ class Keychain {
     // If Exists in KVS
     if (this.data.kvs[nameHMAC] !== undefined) {
       // Decrypt
-      let passwordData = await Util.decryptPassword(
-        this.data.kvs[nameHMAC],
-        this.secrets.AES_KEY
-      );
+      let passwordData = await Util.decryptPassword(this.data.kvs[nameHMAC], this.secrets.AES_KEY);
       // Handles Swap Attack
       var nameHMACIndex = passwordData.indexOf(nameHMAC);
       if (nameHMACIndex == -1) {
@@ -230,22 +209,19 @@ class Keychain {
     let nameHMAC = await Util.HMAC(this.secrets.HMAC_KEY, name);
 
     // Encrypted Password Data = IV (Base64) + Encrypt (Password + nameHMAC + Random Noise Padding)
-    let encryptedPasswordData = await Util.encryptPassword(
-      nameHMAC,
-      value,
-      this.secrets.AES_KEY
-    );
+    let encryptedPasswordData = await Util.encryptPassword(nameHMAC, value, this.secrets.AES_KEY);
 
     // Set
     this.data.kvs[nameHMAC] = encryptedPasswordData;
 
-    let chance = Math.floor(Math.random() * 10);
+    // Dummy Record Set
+    let chance = randomInt(10);
     if (chance == 0 || chance == 9) {
-      this.set(Util.generateService(), Util.generatePass());
-      this.set(Util.generateService(), Util.generatePass());
+      await this.set(Util.generateDummyDomain(), Util.generateDummyPassword());
+      await this.set(Util.generateDummyDomain(), Util.generateDummyPassword());
     } 
     else if (chance>1 && chance<5) {
-      this.set(Util.generateService(), Util.generatePass());
+      await this.set(Util.generateDummyDomain(), Util.generateDummyPassword());
     }
   }
 

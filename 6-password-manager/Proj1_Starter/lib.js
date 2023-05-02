@@ -5,7 +5,7 @@ const base64url = require("base64url");
 
 class Util {
 
-  /* Others *****************************************************************/
+  /* Others **************************************************************************/
 
   static encoder = new TextEncoder();
   static decoder = new TextDecoder();
@@ -46,36 +46,37 @@ class Util {
     return buffer.buffer.slice(buffer.byteOffset,buffer.byteOffset + buffer.byteLength);
   }
 
-  /* Key Generators *****************************************************/
+  /* Key Generators ******************************************************************/
 
-  static async generateMasterKey(password, salt = null, iterations = 100000) {
+  static async generateMasterKey(password, salt, iterations) {
+
+    const HmacKeyGenParams = {
+      name: 'HMAC',
+      hash: 'SHA-256',
+      length: 256,
+    };
+
+    const Pbkdf2Params = {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: iterations,
+      hash: "SHA-256",
+    }
+
     // Password to CryptoKey
-    let passwordCryptoKey = await subtle.importKey(
+    const passwordCryptoKey = await subtle.importKey(
       "raw",
       password,
-      {
-        name: "PBKDF2",
-        hash: "SHA-256",
-      },
+      Pbkdf2Params,
       false,
       ["deriveKey"]
     );
 
-    //  Master Key from Password CryptoKey
-    salt = salt || Util.generateRandomSalt();
-    let masterKey = await subtle.deriveKey(
-      {
-        name: "PBKDF2",
-        salt: salt,
-        iterations: iterations,
-        hash: "SHA-256",
-      },
+    //  Password CryptoKey to Master Key
+    const masterKey = await subtle.deriveKey(
+      Pbkdf2Params,
       passwordCryptoKey,
-      {
-        name: "HMAC",
-        hash: { name: "SHA-256" },
-        length: 128,
-      },
+      HmacKeyGenParams,
       false,
       ["sign", "verify"]
     );
@@ -83,16 +84,20 @@ class Util {
     return [salt, masterKey];
   }
 
-  static async generateHMACKey(masterKey, HMAC_PHRASE) {
-    let hmacRawKey = await subtle.sign("HMAC", masterKey, HMAC_PHRASE);
+  static async generateHMACKey(masterKey, HMAC_KEY_DERIVATION_SALT) {
 
-    let HMAC_KEY = await subtle.importKey(
+    const HmacKeyGenParams = {
+      name: 'HMAC',
+      hash: 'SHA-256',
+      length: 256,
+    };
+
+    const HMAC_RAW_KEY = await subtle.sign("HMAC", masterKey, HMAC_KEY_DERIVATION_SALT);
+
+    const HMAC_KEY = await subtle.importKey(
       "raw",
-      hmacRawKey,
-      {
-        name: "HMAC",
-        hash: "SHA-256",
-      },
+      HMAC_RAW_KEY,
+      HmacKeyGenParams,
       false,
       ["sign"]
     );
@@ -100,13 +105,19 @@ class Util {
     return HMAC_KEY;
   }
 
-  static async generateAESKey(masterKey, AESGCM_PHRASE) {
-    let aesRawKey = await subtle.sign("HMAC", masterKey, AESGCM_PHRASE);
+  static async generateAESKey(masterKey, AES_KEY_DERIVATION_SALT) {
 
-    let AES_KEY = await subtle.importKey(
+    const AesKeyGenParams = {
+      name: 'AES-GCM',
+      length: 256,
+    };
+
+    const AES_RAW_KEY = await subtle.sign("HMAC", masterKey, AES_KEY_DERIVATION_SALT);
+
+    const AES_KEY = await subtle.importKey(
       "raw",
-      aesRawKey,
-      { name: "AES-GCM" },
+      AES_RAW_KEY,
+      AesKeyGenParams,
       false,
       ["encrypt", "decrypt"]
     );
@@ -114,7 +125,7 @@ class Util {
     return AES_KEY;
   }
 
-  /* HMAC ****************************************************************/
+  /* HMAC ****************************************************************************/
 
   static async HMAC(key, x) {
     let xHMAC = await subtle.sign("HMAC", key, x);
@@ -122,7 +133,7 @@ class Util {
     return xHMAC;
   }
 
-  /* Encryption/Decryption ***********************************************/
+  /* Encryption/Decryption ***********************************************************/
 
   static async encryptPassword(nameHMAC, password, AES_KEY) {
     // IV = 24 Bytes = 192 Bits = 32 Base64 Characters
@@ -132,14 +143,13 @@ class Util {
     let passwordData = password + nameHMAC + Util.generateRandomBase64Noise();
 
     // Encryption
-    let encryptedPasswordData = await subtle.encrypt(
-      {
-        name: "AES-GCM",
-        iv: iv,
-      },
-      AES_KEY,
-      passwordData
-    );
+
+    let AesGcmParams = {
+      name: "AES-GCM",
+      iv: iv,
+    }
+
+    let encryptedPasswordData = await subtle.encrypt(AesGcmParams, AES_KEY, passwordData);
 
     encryptedPasswordData = Util.arrayBufferToBase64(encryptedPasswordData);
     encryptedPasswordData = iv + encryptedPasswordData;
@@ -157,37 +167,23 @@ class Util {
     encryptedPasswordData = Util.base64ToArrayBuffer(encryptedPasswordData);
 
     // Decryption
-    let passwordData = await subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: iv,
-      },
-      AES_KEY,
-      encryptedPasswordData
-    );
+    let AesGcmParams = {
+      name: "AES-GCM",
+      iv: iv,
+    }
+
+    let passwordData = await subtle.decrypt(AesGcmParams, AES_KEY, encryptedPasswordData);
 
     passwordData = Util.byteArrayToString(passwordData);
+    // Password Data = Password + nameHMAC + Random Noise Padding
     return passwordData;
   }
 
-  /* Master Password Phrase ***********************************************/
+  /* Dummy Data Generators ***********************************************************/
 
-  static async sign_master_password_phrase(masterKey, masterPasswordPhrase) {
-    let masterPasswordPhraseSigned = await subtle.sign("HMAC", masterKey, masterPasswordPhrase);
-    masterPasswordPhraseSigned = Util.arrayBufferToBase64(masterPasswordPhraseSigned);
-    return masterPasswordPhraseSigned;
-  }
-
-  static async verify_master_password_phrase(masterKey, masterPasswordPhraseSigned, masterPasswordPhrase) {
-    masterPasswordPhraseSigned = Util.base64ToArrayBuffer(masterPasswordPhraseSigned);
-    return await subtle.verify("HMAC", masterKey, masterPasswordPhraseSigned, masterPasswordPhrase);
-  }
-
-  /* Dummy Data ***********************************************************/
-
-  static async generateService() {
+  static generateDummyDomain() {
     const characters = "abcdefghijklmnopqrstuvwxyz";
-    let result = " ";
+    let result = "";
     const charactersLength = characters.length;
     for (let i = 0; i < 7; i++) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
@@ -197,9 +193,9 @@ class Util {
     return result;
   }
 
-  static async generatePass() {
+  static generateDummyPassword() {
     const characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let result = " ";
+    let result = "";
     const charactersLength = characters.length;
     for (let i = 0; i < 8; i++) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
