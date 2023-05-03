@@ -103,10 +103,17 @@ class Keychain {
       }
     }
 
-    // Check for salt in repr
+    // Parse JSON
     let keychain = JSON.parse(repr);
+
+    // Check for salt in repr
     if (!("salt" in keychain) || keychain["salt"] == undefined) {
-      throw "Salt not found in repr!";
+      throw "salt not found in repr!";
+    }
+
+    // Check for iterations in repr
+    if (!("iterations" in keychain) || keychain["iterations"] == undefined) {
+      throw "iterations not found in repr!";
     }
 
     // Regenerate Master Key from Password
