@@ -11,7 +11,7 @@ from vigenere import Vigenere
 
 REGEX = '[^A-Za-z]'
 
-CIPHERTEXT_FILE_PATH = "./data/ciphertext.txt"
+CIPHERTEXT_FILE_PATH = "./data/c.txt"
 FREQUENCY_TABLE_FILE_PATH = "./data/frequency_table.csv"
 
 DECRYPTED_PLAINTTEXT_FILE_PATH = "./output/decrypted_plaintext.txt"
